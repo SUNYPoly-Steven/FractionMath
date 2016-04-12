@@ -12,23 +12,23 @@
 #define FINAL    8
 
 int alpha_index(const char* c); //returns the index of the char in the alpha array (returns -1 if fails)
-const char* one(const char*);
-const char* two(const char*);
-const char* four(const char*);
-const char* five(const char*);
-const char* six(const char*);
-const char* seven(const char*);
-const char* eight(const char*);
-const char* nine(const char*);
+const char* state_one(const char*);
+const char* state_two(const char*);
+const char* state_four(const char*);
+const char* state_five(const char*);
+const char* state_six(const char*);
+const char* state_seven(const char*);
+const char* state_eight(const char*);
+const char* state_nine(const char*);
 
 
-const char* (*acts[STATES])(const char*) = {NULL, one, two, NULL, four, five, six, seven, eight, nine};
+const char* (*acts[STATES])(const char*) = {NULL, state_one, state_two, NULL, state_four, state_five, state_six, state_seven, state_eight, state_nine};
 char alpha[ALPHA] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '/', '*', '\n', '\0' };
 int trans[STATES][ALPHA] = {
 	         /*0   1   2   3   4   5   6   7   8   9   +   -   /   *   s  \n  \0*/
 	/* 0*/	{ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  1,  1, -1, -1, -1, -1, -1 },
 	/* 1*/  {  2,  2,  2,  2,  2,  2,  2,  2,  2,  2, -1, -1, -1, -1, -1, -1, -1 },
-	/* 2*/  {  2,  2,  2,  2,  2,  2,  2,  2,  2,  2, -1, -1,  6, -1, -1, -1, -1 },
+	/* 2*/  {  2,  2,  2,  2,  2,  2,  2,  2,  2,  2, -1, -1,  6, -1,  3, -1, -1 },
 	/* 3*/  {  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  4,  4,  4,  4, -1, -1, -1 },
 	/* 4*/  { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  0, -1, -1 },
 	/* 5*/  {  5,  5,  5,  5,  5,  5,  5,  5,  5,  5, -1, -1,  6, -1, -1, -1, -1 },
@@ -55,6 +55,7 @@ struct frac {
 
 frac a;
 frac b;
+const std::string temp;//for storing the numbers
 
 
 int main(int argc, char* argv[]) {
@@ -70,9 +71,9 @@ int main(int argc, char* argv[]) {
 			current = START;
 			quit = false;
 			do {
-				(acts[current]) && (c = acts[current](c));
+				(acts[current]) && (c = acts[current](c));//work on the current character
 				if (current != FINAL) {
-					current = trans[current][alpha_index(c)];
+					current = trans[current][alpha_index(c)];//make the trasition between states
 				}
 				else {
 					quit = true;
@@ -93,44 +94,52 @@ int alpha_index(const char* c) {
 	return -1;
 }
 
-const char* one(const char* c) {
+const char* state_one(const char* c) {
 	//this should be a [+/-]
 	a.sign = (*c == '+') ? true : false;
-	return c;//what do I return?
+	return c + 1;//returns the next character 
 }
 
-const char* two(const char* c) {
-	std::cout << "two" << std::endl;
-	return c;
+const char* state_two(const char* c) {
+	//should be a #, and the next char will be a [space] or a [/] or a [#]
+	//should be storing the current number char somewhere to put into either whole or numberator
+	
+	return c + 1;//returns the next character
 }
 
-const char* four(const char* c) {
-	std::cout << "four" << std::endl;
-	return c;
+const char* state_four(const char* c) {
+	//should be the operator trasitioning into a new fraction
+
+	return c + 1;//returns the next character
 }
 
-const char* five(const char* c) {
-	std::cout << "five" << std::endl;
-	return c;
+const char* state_five(const char* c) {
+	//should be a #, and the next char will be a [/] or a [#]
+
+	return c + 1;//returns the next character
 }
 
-const char* six(const char* c) {
-	std::cout << "six" << std::endl;
-	return c;
+const char* state_six(const char* c) {
+	//should be a [/] and we should crunch all the chars we just read into the appropriate number in the fraction
+
+	return c + 1;//returns the next character
 }
 
-const char* seven(const char* c) {
-	std::cout << "seven" << std::endl;
-	return c;
+const char* state_seven(const char* c) {
+	//should be a #, and the next char will be a [space] or a [\n] or a [\0] or a [#]
+
+	return c + 1;//returns the next character
 }
 
-const char* eight(const char* c) {
-	std::cout << "eight" << std::endl;
-	return c;
+const char* state_eight(const char* c) {
+	//FINAL STATE: crunch the denomenator and prep for next line
+
+	return c + 1;//returns the next character
 }
 
-const char* nine(const char* c) {
-	std::cout << "nine" << std::endl;
-	return c;
+const char* state_nine(const char* c) {
+	//should be a [space], next is the operator 
+
+	return c + 1;//returns the next character
 }
 
