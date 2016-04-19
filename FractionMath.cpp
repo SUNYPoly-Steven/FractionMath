@@ -6,7 +6,7 @@
 #include <fstream>
 #include <string>
 
-#define debug_lines 1
+#define debug_lines 0
 
 #define STATES  10
 #define ALPHA   17
@@ -34,7 +34,7 @@ int trans[STATES][ALPHA] = {
 	         /*0   1   2   3   4   5   6   7   8   9   +   -   /   *   s  \n  \0*/
 	/* 0*/	{ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  1,  1, -1, -1, -1, -1, -1 },
 	/* 1*/  {  2,  2,  2,  2,  2,  2,  2,  2,  2,  2, -1, -1, -1, -1, -1, -1, -1 },
-	/* 2*/  {  2,  2,  2,  2,  2,  2,  2,  2,  2,  2, -1, -1,  6, -1,  3, -1, -1 },
+	/* 2*/  {  2,  2,  2,  2,  2,  2,  2,  2,  2,  2, -1, -1,  6, -1,  3,  8,  8 },
 	/* 3*/  {  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  4,  4,  4,  4, -1, -1, -1 },
 	/* 4*/  { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  0, -1, -1 },
 	/* 5*/  {  5,  5,  5,  5,  5,  5,  5,  5,  5,  5, -1, -1,  6, -1, -1, -1, -1 },
@@ -45,11 +45,12 @@ int trans[STATES][ALPHA] = {
 };
 
 struct frac {
+
 	int whole;
 	int numerator;
 	int denominator;
-	bool sign; //+ is true
-	
+	bool sign;
+
 	frac() {
 		whole = 0;
 		numerator = 0;
@@ -57,42 +58,15 @@ struct frac {
 		sign = true;
 	}
 
-	frac add(frac& other) {
-		frac out;
-		whole = (sign) ? whole : whole*(-1);//if a negative sign make whole part negative
-		other.whole = (other.sign) ? other.whole : other.whole*-1;
-		//add whole parts
-		out.whole = whole + other.whole;
-		//make sure denomenators are = then add numerators
-		if (denominator != other.denominator) {
-			out.denominator = denominator * other.denominator;
-			numerator *= other.denominator;
-			other.numerator *= denominator;
-		}
-		out.numerator = numerator + other.numerator;
-		return out;
+	frac(int n, int d) {
+		whole = 0;
+		numerator = n;
+		denominator = d;
+		sign = true;
 	}
 
-	frac sub(frac& other) {
-		other.sign = !other.sign; //flip sign
-		return add(other);
-	}
-
-	frac multiply(frac& other) {
-		frac out;
-		return out;
-	} 
-
-	frac divide(frac& other) {
-		//flip the fraction then multiply
-		int temp = other.numerator;
-		other.numerator = other.denominator;
-		other.denominator = temp;
-		return multiply(other);
-	}
-
-	bool is_zero() const {
-		if (whole == 0 && numerator == 0) {
+	bool is_zero() {
+		if (numerator == 0 && whole == 0) {
 			return true;
 		}
 		else {
@@ -100,32 +74,66 @@ struct frac {
 		}
 	}
 
-	void simplify() {
-		if (numerator >= denominator) { //if numerator > denominator then add one to whole and reduce fraction
-			whole += numerator / denominator;
-			numerator %= denominator;
-		} 
-		else { //else numerator < denominator try to find a number both are divisible by and simplify
-			for (int i = 0; i < numerator; ++i) {
-				if (numerator % i == 0 && denominator % i == 0) { //both are evenly divisible by i
-					numerator /= i;
-					denominator /= i;
-				}
-			}
+	frac add(const frac& f) {
+		return simplify(((numerator * f.denominator) + (f.numerator * denominator)), (denominator*f.denominator));
+	}
+
+	frac sub(const frac& f) {
+		return simplify(((numerator * f.denominator) + ((-1*f.numerator) * denominator)), (denominator * f.denominator));
+	}
+
+	frac multiply(const frac& f) {
+		return simplify(numerator * f.numerator, denominator * f.denominator);
+	}
+
+	frac divide(const frac& f) {
+		return simplify(numerator * f.denominator, f.numerator * denominator);
+	}
+
+	frac simplify(int n, int d) {
+		frac out;
+		//return frac(n, d);
+		if (n % d == 0) {
+			out.numerator = n / d;
+			out.denominator = 1;
+		}
+		else {
+			int gcf = this->gcf(n, d);
+			out.numerator = n / gcf;
+			out.denominator = d / gcf;
+		}
+		
+		return out;
+	}
+
+	frac convert() {
+		frac out;
+		whole = (sign) ? whole : whole*-1;
+		out.numerator = (whole * denominator) + numerator;
+		out.denominator = denominator;
+		return out;
+	}
+
+	int gcf(int n, int d) {
+		if (d == 0) {
+			return n;
+		}
+		else {
+			return gcf(d, n % d);
 		}
 	}
-	
 };
-
 
 frac a;
 frac total;
 std::string temp;//for storing the numbers read, to compile into a part of the fraction
+char op = ' ';
+bool isWhole = false;
 
 
 int main(int argc, char* argv[]) {
 
-	std::fstream *file = new std::fstream("test.txt"); //<-- make sure this is changed before you hand it in//
+	std::fstream *file = new std::fstream("small_test.txt"); //<-- make sure this is changed before you hand it in//
 	if (file->is_open()) {
 		std::string s;
 		int current;
@@ -133,6 +141,9 @@ int main(int argc, char* argv[]) {
 		do {
 			std::getline(*file, s);
 			const char* c = s.c_str();
+			if (s[0] == '#' || s[0] == '\0') {
+				continue;
+			}
 			current = START;
 			quit = false;
 			do {
@@ -154,8 +165,12 @@ std::cout << " POST-CURRENT(" << *c << "): " << current << ' ';
 					quit = true;
 				}
 			} while (!quit);
-			std::cout << a.whole << ' ' << a.numerator << '/' << a.denominator << std::endl;
-		} while (false/*!file->eof()*/);
+			std::cout << total.numerator << '/' << total.denominator << std::endl;
+			total.sign = true;
+			total.whole = 0;
+			total.numerator = 0;
+			total.denominator = 1;
+		} while (!file->eof());
 	}
 	else {
 		std::cerr << "ERROR: FILE NOT FOUND" << std::endl;
@@ -246,6 +261,9 @@ const char* state_two(const char* c) {
 	//should be a #, and the next char will be a [space] or a [/] or a [#]
 	//should be storing the current number char somewhere to put into either whole or numberator
 	temp.push_back(*c);//make a copy of the char in the string
+	if (*(c+1) == '\0' || *(c+1) == '\n') {
+		isWhole = true;
+	}
 #if debug_lines
 std::cout << "function 2" << std::endl;
 #endif
@@ -267,27 +285,29 @@ const char* state_four(const char* c) {
 	//should be the [+,-,/,*] trasitioning into the next fraction
 	//should complete the operation and reset any nessessary variables
 	if (!total.is_zero()) {
-		if (*c == '+') {
-			total = total.add(a);
+		if (op == '+') {
+			total = total.add(a.convert());
 		}
-		else if (*c == '-') {
-			total = total.sub(a);
+		else if (op == '-') {
+			total = total.sub(a.convert());
 		}
-		else if (*c == '*') {
-			total = total.multiply(a);
+		else if (op == '*') {
+			total = total.multiply(a.convert());
 		}
-		else if (*c == '/') {
-			total = total.divide(a);
-		}
-		else {
-
+		else if (op == '/') {
+			total = total.divide(a.convert());
 		}
 	}
 	else {
-		total = total.add(a);
-		
+		total = total.add(a.convert());
 	}
-	total.simplify();
+
+	op = *c;
+	a.sign = true;
+	a.whole = 0;
+	a.numerator = 0;
+	a.denominator = 1;
+
 #if debug_lines
 std::cout << "function 4" << std::endl;
 #endif
@@ -325,31 +345,39 @@ std::cout << "function 7" << std::endl;
 
 const char* state_eight(const char* c) {
 	//FINAL STATE: crunch the denomenator and prep for next line
-	a.denominator = to_int(temp);
+	if (isWhole) {
+		a.whole = to_int(temp);
+		isWhole = false;
+	}
+	else {
+		a.denominator = to_int(temp);
+	}
 	temp = "";
 
 	if (!total.is_zero()) {
-		if (*c == '+') {
-			total = total.add(a);
+		if (op == '+') {
+			total = total.add(a.convert());
 		}
-		else if (*c == '-') {
-			total = total.sub(a);
+		else if (op == '-') {
+			total = total.sub(a.convert());
 		}
-		else if (*c == '*') {
-			total = total.multiply(a);
+		else if (op == '*') {
+			total = total.multiply(a.convert());
 		}
-		else if (*c == '/') {
-			total = total.divide(a);
-		}
-		else {
-
+		else if (op == '/') {
+			total = total.divide(a.convert());
 		}
 	}
 	else {
-		total = total.add(a);
+		total = total.add(a.convert());
 
 	}
-	total.simplify();
+
+	a.sign = true;
+	a.whole = 0;
+	a.numerator = 0;
+	a.denominator = 1;
+
 #if debug_lines
 std::cout << "function 8" << std::endl;
 #endif
