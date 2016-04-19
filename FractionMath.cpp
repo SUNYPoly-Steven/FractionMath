@@ -133,7 +133,7 @@ bool isWhole = false;
 
 int main(int argc, char* argv[]) {
 
-	std::fstream *file = new std::fstream("small_test.txt"); //<-- make sure this is changed before you hand it in//
+	std::fstream *file = new std::fstream(argv[1]);
 	if (file->is_open()) {
 		std::string s;
 		int current;
